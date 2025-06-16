@@ -29,7 +29,8 @@
                 android:src="@drawable/ic_profile_image"
                 app:civ_border_color="@color/flatui_clouds"
                 app:civ_border_width="@dimen/circular_image_border_large"
-                app:civ_circle_background_color="@color/flatui_clouds" />
+                app:civ_circle_background_color="@color/flatui_clouds"
+                android:contentDescription="@string/profile_image_placeholder" />
 
 
             <LinearLayout

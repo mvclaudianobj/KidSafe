@@ -45,7 +45,6 @@ import com.mansourappdevelopment.androidapp.kidsafe.dialogfragments.Confirmation
 import com.mansourappdevelopment.androidapp.kidsafe.dialogfragments.GoogleChildSignUpDialogFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.dialogfragments.InformationDialogFragment;
 import com.mansourappdevelopment.androidapp.kidsafe.dialogfragments.LoadingDialogFragment;
-import com.mansourappdevelopment.androidapp.kidsafe.interfaces.OnConfirmationListener;
 import com.mansourappdevelopment.androidapp.kidsafe.interfaces.OnGoogleChildSignUp;
 import com.mansourappdevelopment.androidapp.kidsafe.models.Child;
 import com.mansourappdevelopment.androidapp.kidsafe.models.Parent;
@@ -55,7 +54,7 @@ import com.mansourappdevelopment.androidapp.kidsafe.utils.Validators;
 import de.hdodenhof.circleimageview.CircleImageView;
 
 
-public class SignUpActivity extends AppCompatActivity implements OnConfirmationListener, OnGoogleChildSignUp {
+public class SignUpActivity extends AppCompatActivity implements OnGoogleChildSignUp {
 	private static final String TAG = "SingUpActivityTAG";
 	private FirebaseDatabase firebaseDatabase;
 	private DatabaseReference databaseReference;
@@ -203,14 +202,47 @@ public class SignUpActivity extends AppCompatActivity implements OnConfirmationL
 	}
 	
 	private void uploadProfileImage(final boolean parent) {
-		if (googleAuth && imageUri == null) {
-			imageUri = auth.getCurrentUser().getPhotoUrl();
-			if (parent)
-				databaseReference.child("parents").child(uid).child("profileImage").setValue(imageUri.toString());
-			else
-				databaseReference.child("childs").child(uid).child("profileImage").setValue(imageUri.toString());
-			
-		} else if (!googleAuth) {
+		String defaultAvatarUrl = "android.resource://com.mansourappdevelopment.androidapp.kidsafe/drawable/ic_default_avatar";
+		if (googleAuth) { // Google Sign In
+			Uri googlePhotoUrl = auth.getCurrentUser().getPhotoUrl();
+			if (googlePhotoUrl != null) {
+				imageUri = googlePhotoUrl;
+				if (parent)
+					databaseReference.child("parents").child(uid).child("profileImage").setValue(imageUri.toString());
+				else
+					databaseReference.child("childs").child(uid).child("profileImage").setValue(imageUri.toString());
+			} else { // No Google photo, use default
+				imageUri = Uri.parse(defaultAvatarUrl);
+				// Upload this default image to Firebase Storage
+				final StorageReference profileImageStorageReference = storageReference.child(uid + "_profileImage");
+				profileImageStorageReference.putFile(imageUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+					@Override
+					public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+						profileImageStorageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+							@Override
+							public void onSuccess(Uri uri) {
+								if (uri != null) {
+									if (parent)
+										databaseReference.child("parents").child(uid).child("profileImage").setValue(uri.toString());
+									else
+										databaseReference.child("childs").child(uid).child("profileImage").setValue(uri.toString());
+								}
+							}
+						});
+					}
+				}).addOnFailureListener(new OnFailureListener() {
+					@Override
+					public void onFailure(@NonNull Exception e) {
+						// Log error or handle as needed
+						Log.e(TAG, "Failed to upload default avatar for Google user: " + e.getMessage());
+					}
+				});
+			}
+		} else { // Regular email/password sign up
+			if (imageUri == null) { // User didn't pick an image
+				imageUri = Uri.parse(defaultAvatarUrl);
+			}
+			// Proceed to upload, whether it's user-selected or default
 			final StorageReference profileImageStorageReference = storageReference.child(uid + "_profileImage");
 			profileImageStorageReference.putFile(imageUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
 				@Override
@@ -224,7 +256,7 @@ public class SignUpActivity extends AppCompatActivity implements OnConfirmationL
 								else
 									databaseReference.child("childs").child(uid).child("profileImage").setValue(uri.toString());
 							}
-							Toast.makeText(SignUpActivity.this, getString(R.string.image_uploaded_successfully), Toast.LENGTH_SHORT).show();
+							// Toast.makeText(SignUpActivity.this, getString(R.string.image_uploaded_successfully), Toast.LENGTH_SHORT).show(); // Optional: maybe only show for user-selected
 						}
 					});
 				}
@@ -294,16 +326,7 @@ public class SignUpActivity extends AppCompatActivity implements OnConfirmationL
 			return false;
 		}
 		
-		
-		if (!Validators.isValidImageURI(imageUri)) {
-			ConfirmationDialogFragment confirmationDialogFragment = new ConfirmationDialogFragment();
-			Bundle bundle = new Bundle();
-			bundle.putString(Constant.CONFIRMATION_MESSAGE, getString(R.string.would_you_love_to_add_a_profile_image));
-			confirmationDialogFragment.setArguments(bundle);
-			confirmationDialogFragment.setCancelable(false);
-			confirmationDialogFragment.show(fragmentManager, Constant.CONFIRMATION_FRAGMENT_TAG);
-			return false;
-		}
+		// Removed image validation block
 		
 		if (!Validators.isInternetAvailable(this)) {
 			startInformationDialogFragment();
@@ -373,7 +396,11 @@ public class SignUpActivity extends AppCompatActivity implements OnConfirmationL
 					//Toast.makeText(SignUpActivity.this, getString(R.string.authentication_succeeded), Toast.LENGTH_SHORT).show();
 					FirebaseUser user = auth.getCurrentUser();
 					googleAuth = true;
-					getParentEmail();
+					if (parent) { // Signing up as Parent
+						signUpRoutine(null); // parentEmail is not needed for parent sign-up
+					} else { // Signing up as Child
+						getParentEmail(); // Shows dialog to get parent's email
+					}
 					
 				}
 				
@@ -388,18 +415,7 @@ public class SignUpActivity extends AppCompatActivity implements OnConfirmationL
 	}
 	
 	@Override
-	public void onConfirm() {
-		imgProfile.requestFocus();
-		Toast.makeText(this, getString(R.string.please_add_a_profile_image), Toast.LENGTH_SHORT).show();
-	}
-	
-	@Override
-	public void onConfirmationCancel() {
-		imageUri = Uri.parse("android.resource://com.mansourappdevelopment.androidapp.kidsafe/drawable/ic_default_avatar");
-		signUp(txtSignUpEmail.getText().toString().toLowerCase(), txtSignUpPassword.toString());
-		//TODO:: default image here
-		Log.i(TAG, "onConfirmationCancel: DONE");
-	}
+	// Removed onConfirm() and onConfirmationCancel() methods
 	
 	@Override
 	public void onModeSelected(String parentEmail) {
