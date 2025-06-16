@@ -62,7 +62,8 @@
 
         <ImageView
             style="@style/DialogFragmentImage"
-            android:src="@drawable/ic_reset" />
+            android:src="@drawable/ic_reset"
+            android:contentDescription="@string/dialog_header_icon" />
 
     </FrameLayout>
 </LinearLayout>

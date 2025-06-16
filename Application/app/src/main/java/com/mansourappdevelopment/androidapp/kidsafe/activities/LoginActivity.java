@@ -54,7 +54,6 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 	private Button btnGoogleSignUp;
 	private TextView txtForgotPassword;
 	private CheckBox checkBoxRememberMe;
-	private ProgressBar progressBar;
 	private FirebaseAuth auth;
 	private FragmentManager fragmentManager;
 	private String uid;
@@ -83,7 +82,6 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 		txtLogInEmail = findViewById(R.id.txtLogInEmail);
 		txtLogInPassword = findViewById(R.id.txtLogInPassword);
 		txtForgotPassword = findViewById(R.id.txtForgotPassword);
-		progressBar = findViewById(R.id.progressBar);
 		
 		checkBoxRememberMe = findViewById(R.id.checkBoxRememberMe);
 		//progressBar.setVisibility(View.GONE);
@@ -197,18 +195,23 @@ public class LoginActivity extends AppCompatActivity implements OnPasswordResetL
 						} catch (ClassCastException e) {
 							e.printStackTrace();
 						}
+						boolean errorSet = false;
 						switch (errorCode) {
 							case "ERROR_INVALID_EMAIL":
 								txtLogInEmail.setError(getString(R.string.enter_valid_email));
+								errorSet = true;
 								break;
 							case "ERROR_USER_NOT_FOUND":
 								txtLogInEmail.setError(getString(R.string.email_isnt_registered));
+								errorSet = true;
 								break;
 							case "ERROR_WRONG_PASSWORD":
 								txtLogInPassword.setError(getString(R.string.wrong_password));
+								errorSet = true;
 								break;
-							default:
-								Toast.makeText(LoginActivity.this, getString(R.string.authentication_failed), Toast.LENGTH_SHORT).show();
+						}
+						if (!errorSet) {
+							Toast.makeText(LoginActivity.this, getString(R.string.authentication_failed), Toast.LENGTH_SHORT).show();
 						}
 					}
 				}
